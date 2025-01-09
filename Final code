@@ -1,0 +1,306 @@
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+using namespace std;
+
+/* Hi and welcome to Nightfall Tunnels! My name is Jadyn Reid. I am the creator of this
+ game I worked on this game solo to strengthen my c++ skills and explore what I'm capable of.
+ My dream is to be a game developer and possible create my own if not work on existing
+ ones, helping bring them to life through technology! I hope you enjoy. */
+
+
+// Function to display text in a wrapped format
+void wraptext(const string &text, size_t linelength) {
+    istringstream words(text); // Use stringstream to break text into words
+    string word;
+    string line;
+
+    while (words >> word) {
+        if (line.length() + word.length() + 1 > linelength) {
+            cout << line << endl; // Print the line
+            line = word;  // Start a new line with the current word
+        } else {
+            if (!line.empty()) {
+                line += " ";       // Add a space between words
+            }
+            line += word;
+        }
+    }
+
+    if (!line.empty()) {  // Print any remaining text in the last line
+        cout << line << endl;
+    }
+}
+
+// Function to display the Nightfall Tunnels intro
+void intro() {
+    cout << "\n Welcome to Nightfall Tunnels!\n\n";
+
+    // Define the text that needs to be wrapped
+    string introText = "The air is thick with dust with a strong smell of old stone and secrets. You awaken in a chamber... cold, alone, and with little to no light enabling you to see your surroundings. You walk through dark corridors that you had to feel around to find, the faint sound of water dripping and creatures moving in the distance. The ground beneath your feet is hard and uneven. Somewhere deep below, treasures await, but so do horrors beyond imagination. You, a lone adventurer, have found yourself in the heart of the Nightfall Tunnels, a dungeon filled with danger, mystery, and untold tales. Each turn you take brings you deeper into the unknown, where the only thing more treacherous than the monsters is the uncertainty of what lies ahead. Your every choice counts. Will you be able to defeat the creatures waiting ahead? Will you uncover the secrets of long-lost civilizations, or will you fall victim to the dungeon's many traps? Only the bold survive—and only the clever will survive.";
+
+    // Call wraptext to handle the wrapping
+    size_t linewidth = 50;  // You can set this value to whatever you like
+    wraptext(introText, linewidth);
+}
+
+// Function to receive player's name
+string playername() {
+    string name;
+    cout << "\nEnter your name: ";
+    cin >> name;
+    cout << "\nWelcome " << name << "!\n";
+    return name;
+}
+
+// Map dimensions and other constants
+const int MAP_WIDTH = 20;
+const int MAP_HEIGHT = 10;
+const char WALL = '#';
+const char FLOOR = '.';
+const char PLAYER = '@';
+const char MONSTER = 'M';
+const char TREASURE = 'T';
+const char EXIT = 'E'; // Exit point symbol
+
+// Class for the character
+class Character {
+public:
+    string name;
+    int health;
+    int maxHealth;
+    int attack;
+    int defense;
+    int level;
+    int experience;
+    vector<string> inventory;
+
+    Character(string n, int h, int a, int d)
+            : name(n), health(h), maxHealth(h), attack(a), defense(d), level(1), experience(0) {}
+
+    int calculateDamage(const Character &target) {
+        int hitChance = rand() % 100;
+        if (hitChance > 20) {  // 80% chance to hit
+            int damage = attack - target.defense;
+            return (damage > 0) ? damage : 1; // Ensure at least 1 damage
+        } else {
+            return 0;  // Missed attack
+        }
+    }
+
+    void takeDamage(int damage) {
+        health -= damage;
+        if (health < 0) health = 0;
+    }
+
+    void levelUp() {
+        level++;
+        maxHealth += 5;
+        health = maxHealth;
+        attack += 2;
+        defense += 1;
+        experience = 0;
+        cout << name << " leveled up! Now level " << level << "!\n";
+    }
+
+    void gainExperience(int xp) {
+        experience += xp;
+        cout << name << " gained " << xp << " XP!\n";
+        if (experience >= 100) {
+            levelUp();
+        }
+    }
+
+    void addItemToInventory(const string &item) {
+        inventory.push_back(item);
+    }
+
+    void displayInventory() const {
+        cout << "Inventory: ";
+        for (const string &item : inventory) {
+            cout << item << " ";
+        }
+        cout << endl;
+    }
+
+    void printStats() const {
+        cout << "Name: " << name << "\n";
+        cout << "Health: " << health << "/" << maxHealth << "\n";
+        cout << "Attack: " << attack << "\n";
+        cout << "Defense: " << defense << "\n";
+        cout << "Level: " << level << "\n";
+        cout << "Experience: " << experience << "/100\n";
+    }
+};
+
+// Function to initialize the dungeon map with walls and floors
+void initializeMap(vector<vector<char>> &map) {
+    for (int i = 0; i < MAP_HEIGHT; ++i) {
+        for (int j = 0; j < MAP_WIDTH; ++j) {
+            if (i == 0 || i == MAP_HEIGHT - 1 || j == 0 || j == MAP_WIDTH - 1) {
+                map[i][j] = WALL; // Place walls around the edges
+            } else {
+                map[i][j] = FLOOR; // Fill the inside with floors
+            }
+        }
+    }
+}
+
+// Function to place random features (monsters, treasures, exit) on the map
+void placeFeatures(vector<vector<char>> &map) {
+    srand(time(0));  // Seed random number generator
+
+    int monsterCount = 5;
+    int treasureCount = 3;
+
+    // Place monsters randomly
+    for (int i = 0; i < monsterCount; ++i) {
+        int x = rand() % (MAP_WIDTH - 2) + 1;
+        int y = rand() % (MAP_HEIGHT - 2) + 1;
+        map[y][x] = MONSTER;
+    }
+
+    // Place treasures randomly
+    for (int i = 0; i < treasureCount; ++i) {
+        int x = rand() % (MAP_WIDTH - 2) + 1;
+        int y = rand() % (MAP_HEIGHT - 2) + 1;
+        map[y][x] = TREASURE;
+    }
+
+    // Place exit randomly
+    int ex = rand() % (MAP_WIDTH - 2) + 1;
+    int ey = rand() % (MAP_HEIGHT - 2) + 1;
+    map[ey][ex] = EXIT;
+}
+
+// Function to display the map (with hidden features)
+void displayMap(const vector<vector<char>> &map, int playerX, int playerY) {
+    for (int i = 0; i < MAP_HEIGHT; ++i) {
+        for (int j = 0; j < MAP_WIDTH; ++j) {
+            if (i == playerY && j == playerX)
+                cout << PLAYER << " ";  // Show player's position
+            else if (map[i][j] == MONSTER || map[i][j] == TREASURE || map[i][j] == EXIT)
+                cout << ". ";  // Hide monsters, treasures, and exit from the map display
+            else
+                cout << map[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
+// Function to simulate combat between the player and an enemy
+void combat(Character &player, Character &enemy) {
+    cout << "A wild " << enemy.name << " appears!\n";
+    while (player.health > 0 && enemy.health > 0) {
+        cout << "\nWhat will you do? (1) Attack (2) Heal\n";
+        int choice;
+        cin >> choice;
+
+        if (choice == 1) {
+            int damage = player.calculateDamage(enemy);
+            enemy.takeDamage(damage);
+            cout << "You dealt " << damage << " damage to " << enemy.name << ".\n";
+        } else if (choice == 2) {
+            int healAmount = 10;
+            player.health = min(player.health + healAmount, player.maxHealth);
+            cout << "You healed for " << healAmount << " health.\n";
+        } else {
+            cout << "Invalid choice. You lost your turn.\n";
+        }
+
+        if (enemy.health <= 0) {
+            cout << enemy.name << " has been defeated!\n";
+            player.gainExperience(50);
+            break;
+        }
+
+        // Enemy's turn to attack
+        int damage = enemy.calculateDamage(player);
+        player.takeDamage(damage);
+        cout << enemy.name << " dealt " << damage << " damage to you.\n";
+
+        if (player.health <= 0) {
+            cout << "You have been defeated!\n";
+            break;
+        }
+
+        player.printStats();
+        cout << endl;
+        enemy.printStats();
+        cout << endl;
+    }
+}
+
+// Function to randomly generate loot
+void generateLoot(Character &player) {
+    vector<string> loot = {"Sword", "Shield", "Health Potion", "Armor"};
+    int lootIndex = rand() % loot.size();
+    string item = loot[lootIndex];
+    player.addItemToInventory(item);
+    cout << "You found a " << item << "!\n";
+}
+
+int main() {
+    intro();  // Show the intro
+    string playerName = playername();  // Get the player's name
+
+    vector<vector<char>> dungeonMap(MAP_HEIGHT, vector<char>(MAP_WIDTH));
+    initializeMap(dungeonMap);  // Initialize the map with walls and floors
+    placeFeatures(dungeonMap);  // Place monsters, treasures, and the exit
+
+    int playerX = rand() % (MAP_WIDTH - 2) + 1;
+    int playerY = rand() % (MAP_HEIGHT - 2) + 1;
+
+    Character player(playerName, 100, 20, 5);
+    Character enemy("Goblin", 50, 10, 2);
+
+    bool gameOver = false;
+
+    while (!gameOver) {
+        displayMap(dungeonMap, playerX, playerY);
+        player.printStats();
+
+        cout << "\nWhat would you like to do? (1) Explore (2) Open Inventory (3) Check Stats (4) Quit\n";
+        int action;
+        cin >> action;
+
+        if (action == 1) {
+            // Explore and make a move
+            int direction;
+            cout << "Which direction would you like to move? (1) Up (2) Down (3) Left (4) Right\n";
+            cin >> direction;
+
+            if (direction == 1) playerY--;
+            if (direction == 2) playerY++;
+            if (direction == 3) playerX--;
+            if (direction == 4) playerX++;
+
+            char cell = dungeonMap[playerY][playerX];
+            if (cell == MONSTER) {
+                combat(player, enemy);
+            } else if (cell == TREASURE) {
+                generateLoot(player);
+            } else if (cell == EXIT) {
+                cout << "You found the exit! You have escaped the dungeon!\n";
+                gameOver = true;
+            }
+        } else if (action == 2) {
+            player.displayInventory();
+        } else if (action == 3) {
+            player.printStats();
+        } else if (action == 4) {
+            cout << "You quit the game.\n";
+            gameOver = true;
+        }
+
+        if (player.health <= 0) {
+            cout << "You have died! Game Over.\n";
+            gameOver = true;
+        }
+    }
+
+    return 0;
+}
